@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  ollama-analyzer:
+    build: .
+    container_name: ollama-news-analyzer
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # Ollama Configuration
+      - OLLAMA_PRIMARY_URL=${OLLAMA_PRIMARY_URL:-http://20.64.243.4:11434}
+      - OLLAMA_FALLBACK_URL=${OLLAMA_FALLBACK_URL:-http://172.17.0.1:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+      - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-60}
+      
+      # API Configuration  
+      - API_KEY=${API_KEY:-prod-key-2025}
+      - API_HOST=${API_HOST:-0.0.0.0}
+      - API_PORT=${API_PORT:-8000}
+      
+      # Rate Limiting
+      - RATE_LIMIT_PER_HOUR=${RATE_LIMIT_PER_HOUR:-100}
+      
+      # Redis Cache (optional)
+      - REDIS_URL=${REDIS_URL}
+      - CACHE_TTL=${CACHE_TTL:-900}
+      
+      # Monitoring
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - METRICS_PORT=${METRICS_PORT:-9090}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      
+      # Application
+      - DEBUG=${DEBUG:-false}
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/analyze-comprehensive/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
+  # Optional Redis for caching (can be added later)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ollama-analyzer-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+# volumes:
+#   redis_data:

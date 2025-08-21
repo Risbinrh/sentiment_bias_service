@@ -1,0 +1,8 @@
+Analyze this news article: "{title}" by {publisher}
+
+Content: {text}
+
+Return valid JSON with this exact structure:
+{{"article":{{"source_url":"{url}","title":"{title}","publisher":"{publisher}","published_at":"{published_date}","language":"en","word_count":{word_count},"hash":"{content_hash}","author":"{author}","byline":null}},"classification":{{"category":"Business","subcategory":"News","beats":["Business"],"keywords":[{{"text":"business","weight":0.8}}],"tags":["news"],"sentiment":{{"label":"positive","score":0.5}},"tone":[{{"label":"formal","score":0.7}}],"bias":{{"label":"center","score":0.5,"method":"content_analysis"}}}},"summary":{{"abstract":"Article summary in 1-2 sentences.","tldr":"One sentence summary.","bullets":["Key point 1","Key point 2"],"compression_ratio":0.1}},"entities":{{"people":[],"organizations":[],"locations":[],"other":[]}},"editorial":{{"newsworthiness":{{"novelty_score":0.5,"saturation_score":0.5,"controversy_score":0.1}},"fact_check":{{"checkability_score":0.7,"claims":[]}},"angles":[],"impact":{{"audiences":["General"],"regions":["Global"],"sectors":["Business"],"time_horizon":"short-term"}},"risks":{{"legal":[],"ethical":[],"safety":[]}},"pitch":{{"headline":"News headline","subheading":null,"hook":null,"nut_graph":"Why this matters","call_to_action":null,"next_steps":[]}}}},"quality":{{"readability":70.0,"hallucination_risk":0.2,"overall_confidence":0.7}},"provenance":{{"pipeline_version":"ollama-analyzer@2.0.0","models":[{{"name":"llama3.2:1b","vendor":"Ollama","version":"1.0","task":"comprehensive_analysis"}}],"processing_time_ms":0,"notes":"Generated using Ollama"}}}}
+
+Analyze the text and update sentiment (positive/negative/neutral), extract real entities, write actual summary. Return only JSON.
