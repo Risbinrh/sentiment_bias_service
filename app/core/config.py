@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_key: str = os.getenv("API_KEY", "prod-key-2025")
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
-    api_port: int = int(os.getenv("API_PORT", "8000"))
+    api_port: int = int(os.getenv("API_PORT", "3456"))
     
     # Rate Limiting
     rate_limit_per_hour: int = int(os.getenv("RATE_LIMIT_PER_HOUR", "100"))
