@@ -201,15 +201,7 @@ class Metadata(BaseModel):
 
 
 class AnalysisRequest(BaseModel):
-    url: Optional[HttpUrl] = None
-    text: Optional[str] = None
-    title: Optional[str] = None
-    publisher: Optional[str] = None
-    options: Optional[Dict[str, bool]] = Field(default_factory=lambda: {
-        "include_timeline": False,
-        "related_stories": False,
-        "detailed_entities": True
-    })
+    url: HttpUrl
 
 
 class AnalysisResponse(BaseModel):
@@ -222,11 +214,6 @@ class AnalysisResponse(BaseModel):
 
 class BatchAnalysisRequest(BaseModel):
     urls: List[HttpUrl] = Field(max_length=10)
-    options: Optional[Dict[str, bool]] = Field(default_factory=lambda: {
-        "include_timeline": False,
-        "related_stories": False,
-        "detailed_entities": True
-    })
 
 
 class BatchAnalysisResponse(BaseModel):

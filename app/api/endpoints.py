@@ -34,19 +34,6 @@ async def analyze_comprehensive(
     start_time = datetime.now()
     
     try:
-        # Validate request
-        if not request.url and not request.text:
-            raise HTTPException(
-                status_code=400,
-                detail="Either 'url' or 'text' must be provided"
-            )
-        
-        if request.text and not request.title:
-            raise HTTPException(
-                status_code=400,
-                detail="'title' is required when providing 'text'"
-            )
-        
         # Perform analysis
         analyzer = await get_final_analyzer()
         metadata = await analyzer.analyze_comprehensive(request)
@@ -57,7 +44,7 @@ async def analyze_comprehensive(
         return AnalysisResponse(
             success=True,
             processing_time_ms=processing_time,
-            article_url=str(request.url) if request.url else None,
+            article_url=str(request.url),
             metadata=metadata
         )
         
@@ -96,10 +83,7 @@ async def analyze_batch(
         # Process all URLs concurrently
         tasks = []
         for url in request.urls:
-            analysis_request = AnalysisRequest(
-                url=url,
-                options=request.options
-            )
+            analysis_request = AnalysisRequest(url=url)
             tasks.append(analyzer.analyze_comprehensive(analysis_request))
         
         # Execute all analyses in parallel

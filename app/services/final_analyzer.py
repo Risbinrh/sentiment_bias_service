@@ -21,23 +21,9 @@ class FinalNewsAnalyzer:
         """
         start_time = datetime.now()
         
-        # Extract content if URL provided
-        if request.url:
-            scraper = await get_scraper()
-            article_data = await scraper.extract_article(str(request.url))
-        else:
-            # Use provided text
-            article_data = {
-                "url": "direct_text_input",
-                "title": request.title or "Unknown Title",
-                "text": request.text,
-                "publisher": request.publisher or "Unknown Publisher",
-                "author": None,
-                "published_date": None,
-                "language": "en",
-                "word_count": len(request.text.split()) if request.text else 0,
-                "content_hash": "direct_input"
-            }
+        # Extract content from URL
+        scraper = await get_scraper()
+        article_data = await scraper.extract_article(str(request.url))
         
         # Analyze with Ollama - use simple text prompt
         ollama_client = await get_ollama_client()
