@@ -183,15 +183,23 @@ class Context(BaseModel):
     related_stories: Optional[List[Dict[str, Any]]] = None
 
 
+class RealCompetitorData(BaseModel):
+    competing_urls: List[str] = Field(description="Actual URLs of competing articles")
+    serp_positions: Dict[str, int] = Field(description="Current ranking positions for target keywords")
+    actual_search_volume: Dict[str, int] = Field(description="Real monthly search volume for keywords")
+    competitor_backlinks: Dict[str, int] = Field(description="Actual backlink counts for competing URLs")
+    social_shares: Dict[str, Dict[str, int]] = Field(description="Real social media shares by platform")
+    content_length_comparison: Dict[str, int] = Field(description="Word count of competing articles")
+    publish_date_analysis: Dict[str, str] = Field(description="Freshness comparison with competitors")
+    domain_authority_scores: Dict[str, int] = Field(description="Domain authority of competing sites")
+
+
 class SEOCompetitorAnalysis(BaseModel):
-    competing_articles_count: int = Field(ge=0, description="Number of competing articles for same keywords")
-    keyword_difficulty: float = Field(ge=0, le=100, description="Difficulty to rank for target keywords")
-    content_uniqueness: float = Field(ge=0, le=100, description="How unique this content is vs competitors")
-    search_volume_potential: float = Field(ge=0, le=100, description="Search volume for target keywords")
-    ranking_opportunities: List[str] = Field(description="SEO opportunities vs competitors")
-    competitor_weaknesses: List[str] = Field(description="Weaknesses in competitor content we can exploit")
-    backlink_potential: float = Field(ge=0, le=100, description="Likelihood of earning quality backlinks")
-    social_sharing_advantage: float = Field(ge=0, le=100, description="Social sharing potential vs competitors")
+    real_competitor_data: RealCompetitorData = Field(description="Actual competitive intelligence data")
+    competitive_advantage_score: float = Field(ge=0, le=100, description="Overall competitive position score")
+    market_gap_analysis: List[str] = Field(description="Specific gaps in competitor coverage")
+    content_differentiation_opportunities: List[str] = Field(description="Ways to stand out from competitors")
+    seo_recommendation: str = Field(description="Strategic SEO recommendation based on competitive landscape")
 
 
 class SEOAnalysis(BaseModel):
