@@ -201,7 +201,7 @@ Keep your response clear and concise."""
         common_orgs = ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon', 'Meta', 'Netflix', 'Uber', 'SpaceX', 
                       'OpenAI', 'ChatGPT', 'TikTok', 'Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'YouTube',
                       'NASA', 'WHO', 'UN', 'EU', 'World Bank', 'IMF', 'Reuters', 'BBC', 'CNN', 'Bloomberg',
-                      'McDonald\\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
+                      'McDonald\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
         
         for org in common_orgs:
             if org.lower() in full_text.lower() and org not in org_entities:
