@@ -171,7 +171,7 @@ Evaluate the content's search engine optimization potential and editorial value 
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, ToneScore,
             Newsworthiness, FactCheck, Impact, Risks, Pitch, Model, Entity, Keyword,
-            Claim, Angle, NextStep, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis
+            Claim, Angle, NextStep, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis, SEOCompetitorAnalysis
         )
         
         analysis_lower = analysis_text.lower()
@@ -485,7 +485,7 @@ Evaluate the content's search engine optimization potential and editorial value 
         from app.models.schemas import (
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, Newsworthiness,
-            FactCheck, Impact, Risks, Pitch, Model, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis
+            FactCheck, Impact, Risks, Pitch, Model, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis, SEOCompetitorAnalysis
         )
         
         return Metadata(
@@ -545,7 +545,16 @@ Evaluate the content's search engine optimization potential and editorial value 
                 search_intent_match="informational",
                 target_keywords=["news", "article"],
                 content_gaps=["More specific keywords needed", "Content optimization required"],
-                competitor_advantage=0.5,
+                competitor_seo_analysis=SEOCompetitorAnalysis(
+                    competing_articles_count=5,
+                    keyword_difficulty=70,
+                    content_uniqueness=50,
+                    search_volume_potential=60,
+                    ranking_opportunities=["Basic SEO optimization", "Content improvement"],
+                    competitor_weaknesses=["Generic content", "Poor optimization"],
+                    backlink_potential=50,
+                    social_sharing_advantage=50
+                ),
                 overall_seo_score=0.5
             ),
             newsroom_pitch_score=NewsroomPitchScore(
@@ -558,13 +567,6 @@ Evaluate the content's search engine optimization potential and editorial value 
                 brand_alignment=60,
                 controversy_risk=20,
                 follow_up_potential=40,
-                competitor_analysis=CompetitorAnalysis(
-                    similar_stories_count=2,
-                    unique_angle_score=50,
-                    coverage_gaps=["Need more analysis", "Missing context"],
-                    competitive_advantage=["Basic coverage", "Standard reporting"],
-                    market_saturation=50
-                ),
                 overall_pitch_score=50,
                 recommendation="Consider",
                 pitch_summary="Standard news content with moderate editorial value. Requires further analysis for publication decision.",
@@ -586,7 +588,7 @@ Evaluate the content's search engine optimization potential and editorial value 
 
     def _generate_seo_analysis(self, analysis_text: str, article_data: Dict[str, Any], category: str, keywords: List):
         """Generate SEO analysis based on content and metadata"""
-        from app.models.schemas import SEOAnalysis
+        from app.models.schemas import SEOAnalysis, SEOCompetitorAnalysis
         
         title = article_data.get('title', '').lower()
         content = article_data.get('text', '').lower()
@@ -629,8 +631,72 @@ Evaluate the content's search engine optimization potential and editorial value 
         if len(title) < 30:
             gaps.append("Title too short for SEO")
             
-        # Competitor advantage
-        advantage = 0.7 if freshness > 0.8 and visibility > 0.6 else 0.5
+        # Comprehensive SEO Competitive Analysis
+        competing_articles = 10 if category in ['Politics', 'Sports', 'Technology'] else 5
+        
+        # Keyword difficulty based on category and breaking news factor
+        keyword_difficulty = 85 if category in ['Politics', 'Technology'] else 60
+        if 'breaking' in title:
+            keyword_difficulty -= 20
+            
+        # Content uniqueness analysis
+        content_uniqueness = 90 if 'exclusive' in title else 70
+        if word_count > 800:
+            content_uniqueness += 10
+            
+        # Search volume potential
+        search_volume = 80 if category in ['Politics', 'Health', 'Technology'] else 60
+        if 'breaking' in title or freshness > 0.8:
+            search_volume += 15
+            
+        # SEO ranking opportunities
+        ranking_opportunities = []
+        if freshness > 0.8:
+            ranking_opportunities.append("First-mover advantage on breaking news")
+        if word_count > 500:
+            ranking_opportunities.append("Long-form content advantage")
+        if len(main_keywords) > 2:
+            ranking_opportunities.append("Strong keyword targeting")
+        if category in ['Health', 'Technology']:
+            ranking_opportunities.append("High-value niche content")
+        if not ranking_opportunities:
+            ranking_opportunities.append("Standard SEO optimization")
+            
+        # Competitor weaknesses to exploit
+        competitor_weaknesses = []
+        if freshness > 0.8:
+            competitor_weaknesses.append("Outdated competitor content")
+        if word_count > 800:
+            competitor_weaknesses.append("Shallow competitor coverage")
+        if 'exclusive' in title:
+            competitor_weaknesses.append("Lack of unique sources")
+        if category in ['Social', 'Local']:
+            competitor_weaknesses.append("Missing local perspective")
+        if not competitor_weaknesses:
+            competitor_weaknesses.append("Generic competitor content")
+            
+        # Backlink potential
+        backlink_potential = 85 if category in ['Health', 'Technology', 'Politics'] else 60
+        if 'study' in content or 'research' in content:
+            backlink_potential += 10
+        if 'exclusive' in title:
+            backlink_potential += 15
+            
+        # Social sharing advantage
+        social_sharing = 90 if category in ['Social', 'Sports', 'Entertainment'] else 70
+        if trending > 0.8:
+            social_sharing += 10
+            
+        competitor_seo_analysis = SEOCompetitorAnalysis(
+            competing_articles_count=competing_articles,
+            keyword_difficulty=min(keyword_difficulty, 100),
+            content_uniqueness=min(content_uniqueness, 100),
+            search_volume_potential=min(search_volume, 100),
+            ranking_opportunities=ranking_opportunities[:4],
+            competitor_weaknesses=competitor_weaknesses[:4],
+            backlink_potential=min(backlink_potential, 100),
+            social_sharing_advantage=min(social_sharing, 100)
+        )
         
         # Overall SEO score
         overall = (visibility + keyword_score + freshness + trending) / 4
@@ -644,13 +710,13 @@ Evaluate the content's search engine optimization potential and editorial value 
             search_intent_match=intent,
             target_keywords=target_kw[:5],
             content_gaps=gaps,
-            competitor_advantage=min(advantage, 1.0),
+            competitor_seo_analysis=competitor_seo_analysis,
             overall_seo_score=min(overall, 1.0)
         )
     
     def _generate_newsroom_pitch_score(self, analysis_text: str, article_data: Dict[str, Any], category: str, sentiment: str):
         """Generate newsroom pitch scoring based on editorial value"""
-        from app.models.schemas import NewsroomPitchScore, CompetitorAnalysis
+        from app.models.schemas import NewsroomPitchScore
         
         title = article_data.get('title', '').lower()
         content = article_data.get('text', '').lower()
@@ -701,32 +767,7 @@ Evaluate the content's search engine optimization potential and editorial value 
         # Follow-up potential
         followup = 70 if category in ['Politics', 'Business', 'Health'] else 40
         
-        # Competitor Analysis
-        similar_stories = 3 if category in ['Politics', 'Sports'] else 1
-        unique_angle = 85 if 'exclusive' in title else 65
-        
-        coverage_gaps = []
-        competitive_advantage = []
-        
-        if category == 'Social':
-            coverage_gaps = ["Local perspective missing in competitor coverage", "Community impact analysis"]
-            competitive_advantage = ["On-ground reporting", "Local source access"]
-        elif category == 'Health':
-            coverage_gaps = ["Expert medical opinion", "Patient impact stories"]
-            competitive_advantage = ["Medical expert network", "Patient testimonials"]
-        else:
-            coverage_gaps = ["In-depth analysis", "Local angle"]
-            competitive_advantage = ["Unique sources", "Comprehensive coverage"]
-            
-        market_saturation = 70 if category in ['Politics', 'Sports'] else 30
-        
-        competitor_analysis = CompetitorAnalysis(
-            similar_stories_count=similar_stories,
-            unique_angle_score=min(unique_angle, 100),
-            coverage_gaps=coverage_gaps,
-            competitive_advantage=competitive_advantage,
-            market_saturation=min(market_saturation, 100)
-        )
+        # Remove competitor analysis from newsroom pitch - moved to SEO analysis
         
         # Overall pitch score (0-100)
         overall = (newsworthiness + appeal + exclusivity + social_potential + urgency + 
@@ -797,7 +838,6 @@ Evaluate the content's search engine optimization potential and editorial value 
             brand_alignment=min(brand_align, 100),
             controversy_risk=min(controversy, 100),
             follow_up_potential=min(followup, 100),
-            competitor_analysis=competitor_analysis,
             overall_pitch_score=min(overall, 100),
             recommendation=recommendation,
             pitch_summary=pitch_summary,

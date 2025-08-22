@@ -183,6 +183,17 @@ class Context(BaseModel):
     related_stories: Optional[List[Dict[str, Any]]] = None
 
 
+class SEOCompetitorAnalysis(BaseModel):
+    competing_articles_count: int = Field(ge=0, description="Number of competing articles for same keywords")
+    keyword_difficulty: float = Field(ge=0, le=100, description="Difficulty to rank for target keywords")
+    content_uniqueness: float = Field(ge=0, le=100, description="How unique this content is vs competitors")
+    search_volume_potential: float = Field(ge=0, le=100, description="Search volume for target keywords")
+    ranking_opportunities: List[str] = Field(description="SEO opportunities vs competitors")
+    competitor_weaknesses: List[str] = Field(description="Weaknesses in competitor content we can exploit")
+    backlink_potential: float = Field(ge=0, le=100, description="Likelihood of earning quality backlinks")
+    social_sharing_advantage: float = Field(ge=0, le=100, description="Social sharing potential vs competitors")
+
+
 class SEOAnalysis(BaseModel):
     search_engine_visibility: float = Field(ge=0, le=1, description="How likely this content is to rank well")
     keyword_density: float = Field(ge=0, le=1, description="Keyword optimization score")
@@ -192,7 +203,7 @@ class SEOAnalysis(BaseModel):
     search_intent_match: str = Field(description="Primary search intent (informational/navigational/transactional)")
     target_keywords: List[str] = Field(description="Primary keywords for SEO targeting")
     content_gaps: List[str] = Field(description="Missing elements that could improve SEO")
-    competitor_advantage: float = Field(ge=0, le=1, description="How this content compares to competitors")
+    competitor_seo_analysis: SEOCompetitorAnalysis = Field(description="Competitive SEO analysis")
     overall_seo_score: float = Field(ge=0, le=1, description="Overall SEO potential score")
 
 
@@ -214,7 +225,6 @@ class NewsroomPitchScore(BaseModel):
     brand_alignment: float = Field(ge=0, le=100, description="How well this aligns with publication brand")
     controversy_risk: float = Field(ge=0, le=100, description="Potential for negative backlash")
     follow_up_potential: float = Field(ge=0, le=100, description="Likelihood of generating follow-up stories")
-    competitor_analysis: CompetitorAnalysis
     overall_pitch_score: float = Field(ge=0, le=100, description="Overall newsroom recommendation score out of 100")
     recommendation: str = Field(description="Editorial recommendation (Pursue/Consider/Pass)")
     pitch_summary: str = Field(description="Complete pitch summary for editorial meeting")
