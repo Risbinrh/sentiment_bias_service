@@ -95,7 +95,8 @@ Keep your response clear and concise."""
         from app.models.schemas import (
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, ToneScore,
-            Newsworthiness, FactCheck, Impact, Risks, Pitch, Model, Entity, Keyword
+            Newsworthiness, FactCheck, Impact, Risks, Pitch, Model, Entity, Keyword,
+            Claim, Angle, NextStep
         )
         
         analysis_lower = analysis_text.lower()
@@ -192,28 +193,56 @@ Keep your response clear and concise."""
                 if clean_point:
                     key_points.append(clean_point[:150])
         
-        # Fallback entity extraction from title and content
-        if not people_entities and not org_entities and not location_entities:
-            # Extract from title and content using simple heuristics
-            full_text = f"{article_data.get('title', '')} {article_data.get('text', '')[:500]}"
-            
-            # Common organization indicators
-            if any(word in full_text.lower() for word in ['tesla', 'apple', 'microsoft', 'google', 'amazon']):
-                for company in ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon']:
-                    if company.lower() in full_text.lower():
-                        org_entities.append(company)
-            
-            # Look for CEO/names patterns  
-            name_patterns = re.findall(r'\b([A-Z][a-z]+ [A-Z][a-z]+)\b', full_text)
-            for name in name_patterns[:3]:  # Limit to 3 names
-                if len(name) > 5 and name not in people_entities:
+        # Enhanced entity extraction from title and content
+        full_text = f"{article_data.get('title', '')} {article_data.get('text', '')[:1000]}"
+        
+        # Always try to extract entities from content regardless of Ollama parsing
+        # Common organizations (companies, institutions)
+        common_orgs = ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon', 'Meta', 'Netflix', 'Uber', 'SpaceX', 
+                      'OpenAI', 'ChatGPT', 'TikTok', 'Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'YouTube',
+                      'NASA', 'WHO', 'UN', 'EU', 'World Bank', 'IMF', 'Reuters', 'BBC', 'CNN', 'Bloomberg',
+                      'McDonald\\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
+        
+        for org in common_orgs:
+            if org.lower() in full_text.lower() and org not in org_entities:
+                org_entities.append(org)
+        
+        # Extract proper names (people) using regex patterns
+        name_patterns = re.findall(r'\b([A-Z][a-z]{2,} [A-Z][a-z]{2,}(?: [A-Z][a-z]{2,})?)\b', full_text)
+        for match in name_patterns[:5]:  # Limit to 5 names
+            name = match[0] if isinstance(match, tuple) else match
+            if len(name) > 5 and name not in people_entities:
+                # Exclude common non-person patterns
+                if not any(word in name.lower() for word in ['news', 'report', 'article', 'company', 'inc', 'ltd']):
                     people_entities.append(name)
+        
+        # Enhanced location detection
+        locations = ['Singapore', 'Malaysia', 'China', 'USA', 'United States', 'India', 'Japan', 'Korea', 
+                    'Europe', 'Asia', 'Africa', 'Australia', 'Canada', 'Mexico', 'Brazil', 'Germany', 
+                    'France', 'Italy', 'Spain', 'UK', 'Britain', 'Russia', 'Thailand', 'Vietnam',
+                    'New York', 'London', 'Tokyo', 'Seoul', 'Beijing', 'Mumbai', 'Dubai', 'Hong Kong']
+        
+        for location in locations:
+            if location.lower() in full_text.lower() and location not in location_entities:
+                location_entities.append(location)
+        
+        # Add some default entities if still empty
+        if not people_entities and not org_entities and not location_entities:
+            # Extract from URL domain as organization
+            url = article_data.get('url', '')
+            if 'thehindu' in url:
+                org_entities.append('The Hindu')
+            elif 'reuters' in url:
+                org_entities.append('Reuters')  
+            elif 'bloomberg' in url:
+                org_entities.append('Bloomberg')
+            elif 'cnn' in url:
+                org_entities.append('CNN')
             
-            # Look for location patterns (countries, cities)
-            location_words = ['Singapore', 'Malaysia', 'China', 'USA', 'Europe', 'Asia', 'Johor']
-            for location in location_words:
-                if location.lower() in full_text.lower():
-                    location_entities.append(location)
+            # Add publisher as organization
+            publisher = article_data.get('publisher', '')
+            if publisher and publisher not in org_entities:
+                org_entities.append(publisher)
         
         # Create abstract from first good summary sentence or fallback
         if summary_sentences:
@@ -281,17 +310,50 @@ Keep your response clear and concise."""
                     saturation_score=0.4,
                     controversy_score=0.1 if sentiment_label == "neutral" else 0.3
                 ),
-                fact_check=FactCheck(checkability_score=0.75),
+                fact_check=FactCheck(
+                    checkability_score=0.75,
+                    claims=[
+                        Claim(
+                            text=f"Main claim from {category.lower()} story requires verification",
+                            priority=1,
+                            suggested_sources=["Official sources", "Industry reports"]
+                        )
+                    ] if sentiment_label != "neutral" else []
+                ),
+                angles=[
+                    Angle(
+                        label=f"{category} Industry Impact",
+                        rationale=f"This story affects {category.lower()} sector stakeholders and market dynamics"
+                    ),
+                    Angle(
+                        label="Public Interest",
+                        rationale="Story has implications for general public awareness and decision-making"
+                    )
+                ],
                 impact=Impact(
-                    audiences=["General public", "Industry watchers"],
-                    regions=["Global"],
-                    sectors=[category],
+                    audiences=["General public", "Industry watchers", f"{category} professionals"],
+                    regions=location_entities[:3] if location_entities else ["Global"],
+                    sectors=[category, "Media", "Public Affairs"],
                     time_horizon="short-term"
                 ),
-                risks=Risks(),
+                risks=Risks(
+                    legal=["Information accuracy verification needed"] if sentiment_label == "negative" else [],
+                    ethical=["Balanced reporting considerations", "Source attribution requirements"],
+                    safety=["Public information safety"] if any(word in analysis_lower for word in ["safety", "health", "security", "risk"]) else []
+                ),
                 pitch=Pitch(
                     headline=f"Analysis: {article_data.get('title', 'News Story')[:60]}",
-                    nut_graph=f"This {category.lower()} story shows {sentiment_label} developments that may impact industry trends and public perception."
+                    nut_graph=f"This {category.lower()} story shows {sentiment_label} developments that may impact industry trends and public perception.",
+                    next_steps=[
+                        NextStep(
+                            action="Verify key claims with additional sources",
+                            owner="Editorial Team"
+                        ),
+                        NextStep(
+                            action="Monitor story development and follow-ups",
+                            owner="News Desk"
+                        )
+                    ]
                 )
             ),
             quality=Quality(
