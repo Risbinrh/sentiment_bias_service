@@ -92,7 +92,7 @@ class FinalNewsAnalyzer:
         
         try:
             # Enhanced prompt to extract entities
-            prompt = f"""Analyze this news article:
+            prompt = f"""Analyze this news article for comprehensive media intelligence:
 
 Title: {article_title}
 Content: {article_text}
@@ -107,7 +107,22 @@ Please provide:
    - Organizations mentioned (companies, institutions)
    - Locations mentioned (cities, countries, places)
 
-Keep your response clear and concise."""
+6. SEO Analysis:
+   - Search engine visibility potential (0-1 score)
+   - Keyword optimization assessment
+   - Content freshness and trending potential
+   - Target keywords for search optimization
+   - Content gaps that could improve SEO performance
+
+7. Newsroom Pitch Scoring:
+   - Newsworthiness and audience appeal (0-1 scores)
+   - Social media potential and viral likelihood
+   - Editorial urgency and resource requirements
+   - Brand alignment and controversy risk assessment
+   - Overall recommendation (Pursue/Consider/Pass)
+   - Key pitch points for editorial meetings
+
+Evaluate the content's search engine optimization potential and editorial value for newsroom decision-making. Keep your response clear and actionable."""
             
             # Don't force JSON format - get text response
             response = await ollama_client.generate(prompt, {
@@ -156,7 +171,7 @@ Keep your response clear and concise."""
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, ToneScore,
             Newsworthiness, FactCheck, Impact, Risks, Pitch, Model, Entity, Keyword,
-            Claim, Angle, NextStep
+            Claim, Angle, NextStep, SEOAnalysis, NewsroomPitchScore
         )
         
         analysis_lower = analysis_text.lower()
@@ -351,6 +366,12 @@ Keep your response clear and concise."""
         if not keywords:
             keywords.append(Keyword(text=category.lower(), weight=0.7))
         
+        # Generate SEO Analysis
+        seo_analysis = self._generate_seo_analysis(analysis_text, article_data, category, keywords)
+        
+        # Generate Newsroom Pitch Score
+        newsroom_pitch = self._generate_newsroom_pitch_score(analysis_text, article_data, category, sentiment_label)
+        
         return Metadata(
             article=ArticleMetadata(
                 source_url=article_data.get("url", ""),
@@ -444,6 +465,8 @@ Keep your response clear and concise."""
                 hallucination_risk=0.2,
                 overall_confidence=0.85
             ),
+            seo_analysis=seo_analysis,
+            newsroom_pitch_score=newsroom_pitch,
             provenance=Provenance(
                 models=[Model(
                     name="llama3.2:1b",
@@ -462,7 +485,7 @@ Keep your response clear and concise."""
         from app.models.schemas import (
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, Newsworthiness,
-            FactCheck, Impact, Risks, Pitch, Model
+            FactCheck, Impact, Risks, Pitch, Model, SEOAnalysis, NewsroomPitchScore
         )
         
         return Metadata(
@@ -513,6 +536,32 @@ Keep your response clear and concise."""
                 hallucination_risk=0.1,
                 overall_confidence=0.7
             ),
+            seo_analysis=SEOAnalysis(
+                search_engine_visibility=0.5,
+                keyword_density=0.5,
+                content_freshness=0.5,
+                readability_score=0.6,
+                trending_potential=0.3,
+                search_intent_match="informational",
+                target_keywords=["news", "article"],
+                content_gaps=["More specific keywords needed", "Content optimization required"],
+                competitor_advantage=0.5,
+                overall_seo_score=0.5
+            ),
+            newsroom_pitch_score=NewsroomPitchScore(
+                newsworthiness=0.5,
+                audience_appeal=0.5,
+                exclusivity_factor=0.3,
+                social_media_potential=0.4,
+                editorial_urgency=0.3,
+                resource_requirements=0.7,
+                brand_alignment=0.6,
+                controversy_risk=0.2,
+                follow_up_potential=0.4,
+                overall_pitch_score=0.5,
+                recommendation="Consider",
+                pitch_notes=["Standard news content", "Review for editorial value"]
+            ),
             provenance=Provenance(
                 models=[Model(
                     name="llama3.2:1b",
@@ -522,6 +571,162 @@ Keep your response clear and concise."""
                 processing_time_ms=processing_time,
                 notes=f"Fallback analysis - {error[:100] if error else 'Processing completed with basic metadata'}"
             )
+        )
+
+    def _generate_seo_analysis(self, analysis_text: str, article_data: Dict[str, Any], category: str, keywords: List):
+        """Generate SEO analysis based on content and metadata"""
+        from app.models.schemas import SEOAnalysis
+        
+        title = article_data.get('title', '').lower()
+        content = article_data.get('text', '').lower()
+        word_count = article_data.get('word_count', 0)
+        
+        # Calculate search engine visibility (based on title, keywords, content length)
+        visibility = 0.7 if len(title) > 30 and word_count > 200 else 0.5
+        
+        # Keyword density (check if main keywords appear in title and content)
+        main_keywords = [k.text for k in keywords[:3]] if keywords else []
+        keyword_score = sum(1 for kw in main_keywords if kw in title) / max(len(main_keywords), 1) * 0.6
+        keyword_score += 0.3 if word_count > 300 else 0.2
+        
+        # Content freshness (based on recency and trending topics)
+        freshness = 0.9 if 'breaking' in title or 'latest' in title else 0.7
+        if category in ['Health', 'Technology', 'Politics']:
+            freshness += 0.1
+            
+        # Trending potential (based on category and controversy)
+        trending = 0.8 if category in ['Social', 'Politics', 'Crime'] else 0.6
+        if 'viral' in analysis_text.lower() or 'trending' in analysis_text.lower():
+            trending = 0.9
+            
+        # Search intent classification
+        intent = "informational"
+        if category in ['Business', 'Health']:
+            intent = "commercial"
+        elif 'how to' in title or 'guide' in title:
+            intent = "transactional"
+            
+        # Target keywords
+        target_kw = main_keywords + [category.lower(), 'news', 'latest']
+        
+        # Content gaps
+        gaps = []
+        if word_count < 300:
+            gaps.append("Content too short for good SEO")
+        if not main_keywords:
+            gaps.append("Missing target keywords")
+        if len(title) < 30:
+            gaps.append("Title too short for SEO")
+            
+        # Competitor advantage
+        advantage = 0.7 if freshness > 0.8 and visibility > 0.6 else 0.5
+        
+        # Overall SEO score
+        overall = (visibility + keyword_score + freshness + trending) / 4
+        
+        return SEOAnalysis(
+            search_engine_visibility=min(visibility, 1.0),
+            keyword_density=min(keyword_score, 1.0),
+            content_freshness=min(freshness, 1.0),
+            readability_score=0.7,  # Default good readability
+            trending_potential=min(trending, 1.0),
+            search_intent_match=intent,
+            target_keywords=target_kw[:5],
+            content_gaps=gaps,
+            competitor_advantage=min(advantage, 1.0),
+            overall_seo_score=min(overall, 1.0)
+        )
+    
+    def _generate_newsroom_pitch_score(self, analysis_text: str, article_data: Dict[str, Any], category: str, sentiment: str):
+        """Generate newsroom pitch scoring based on editorial value"""
+        from app.models.schemas import NewsroomPitchScore
+        
+        title = article_data.get('title', '').lower()
+        content = article_data.get('text', '').lower()
+        word_count = article_data.get('word_count', 0)
+        publisher = article_data.get('publisher', '').lower()
+        
+        # Newsworthiness (based on category, recency, impact)
+        newsworthiness = 0.8 if category in ['Politics', 'Health', 'Crime'] else 0.6
+        if 'breaking' in title or 'exclusive' in title:
+            newsworthiness = 0.9
+            
+        # Audience appeal (based on human interest, relevance)
+        appeal = 0.7 if category in ['Social', 'Health', 'Sports'] else 0.5
+        if sentiment == 'positive':
+            appeal += 0.1
+        elif sentiment == 'negative':
+            appeal += 0.2  # Negative news often gets more engagement
+            
+        # Exclusivity factor
+        exclusivity = 0.8 if 'exclusive' in title or 'first' in title else 0.4
+        if publisher in ['reuters', 'bloomberg', 'cnn']:
+            exclusivity += 0.2
+            
+        # Social media potential
+        social_potential = 0.8 if category in ['Social', 'Sports', 'Entertainment'] else 0.5
+        if any(word in content for word in ['viral', 'video', 'photo', 'shocking']):
+            social_potential = 0.9
+            
+        # Editorial urgency
+        urgency = 0.9 if 'breaking' in title else 0.6
+        if category in ['Health', 'Crime']:
+            urgency += 0.1
+            
+        # Resource requirements (lower is better)
+        resources = 0.8 if word_count > 500 else 0.6  # Longer articles need less additional work
+        
+        # Brand alignment (assume general news brand)
+        brand_align = 0.7  # Default good alignment
+        if category in ['Politics', 'Health']:
+            brand_align = 0.8
+            
+        # Controversy risk
+        controversy = 0.3 if category in ['Politics', 'Crime'] else 0.1
+        if sentiment == 'negative':
+            controversy += 0.2
+            
+        # Follow-up potential
+        followup = 0.7 if category in ['Politics', 'Business', 'Health'] else 0.4
+        
+        # Overall pitch score
+        overall = (newsworthiness + appeal + exclusivity + social_potential + urgency + 
+                  (1-controversy) + followup + brand_align) / 8
+        
+        # Recommendation
+        if overall > 0.75:
+            recommendation = "Pursue"
+        elif overall > 0.5:
+            recommendation = "Consider"
+        else:
+            recommendation = "Pass"
+            
+        # Pitch notes
+        notes = []
+        if newsworthiness > 0.7:
+            notes.append("High news value")
+        if social_potential > 0.7:
+            notes.append("Strong social media potential")
+        if urgency > 0.8:
+            notes.append("Time-sensitive story")
+        if controversy > 0.5:
+            notes.append("Handle with editorial caution")
+        if not notes:
+            notes.append("Standard editorial review recommended")
+            
+        return NewsroomPitchScore(
+            newsworthiness=min(newsworthiness, 1.0),
+            audience_appeal=min(appeal, 1.0),
+            exclusivity_factor=min(exclusivity, 1.0),
+            social_media_potential=min(social_potential, 1.0),
+            editorial_urgency=min(urgency, 1.0),
+            resource_requirements=min(resources, 1.0),
+            brand_alignment=min(brand_align, 1.0),
+            controversy_risk=min(controversy, 1.0),
+            follow_up_potential=min(followup, 1.0),
+            overall_pitch_score=min(overall, 1.0),
+            recommendation=recommendation,
+            pitch_notes=notes
         )
 
 

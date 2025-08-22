@@ -183,6 +183,34 @@ class Context(BaseModel):
     related_stories: Optional[List[Dict[str, Any]]] = None
 
 
+class SEOAnalysis(BaseModel):
+    search_engine_visibility: float = Field(ge=0, le=1, description="How likely this content is to rank well")
+    keyword_density: float = Field(ge=0, le=1, description="Keyword optimization score")
+    content_freshness: float = Field(ge=0, le=1, description="Timeliness and relevance score")
+    readability_score: float = Field(ge=0, le=1, description="Content accessibility for search engines")
+    trending_potential: float = Field(ge=0, le=1, description="Likelihood to go viral or trend")
+    search_intent_match: str = Field(description="Primary search intent (informational/navigational/transactional)")
+    target_keywords: List[str] = Field(description="Primary keywords for SEO targeting")
+    content_gaps: List[str] = Field(description="Missing elements that could improve SEO")
+    competitor_advantage: float = Field(ge=0, le=1, description="How this content compares to competitors")
+    overall_seo_score: float = Field(ge=0, le=1, description="Overall SEO potential score")
+
+
+class NewsroomPitchScore(BaseModel):
+    newsworthiness: float = Field(ge=0, le=1, description="How newsworthy this story is")
+    audience_appeal: float = Field(ge=0, le=1, description="Expected audience engagement")
+    exclusivity_factor: float = Field(ge=0, le=1, description="How unique/exclusive this story is")
+    social_media_potential: float = Field(ge=0, le=1, description="Likelihood to spread on social media")
+    editorial_urgency: float = Field(ge=0, le=1, description="How time-sensitive this story is")
+    resource_requirements: float = Field(ge=0, le=1, description="Editorial resources needed (inverse scale)")
+    brand_alignment: float = Field(ge=0, le=1, description="How well this aligns with publication brand")
+    controversy_risk: float = Field(ge=0, le=1, description="Potential for negative backlash")
+    follow_up_potential: float = Field(ge=0, le=1, description="Likelihood of generating follow-up stories")
+    overall_pitch_score: float = Field(ge=0, le=1, description="Overall newsroom recommendation score")
+    recommendation: str = Field(description="Editorial recommendation (Pursue/Consider/Pass)")
+    pitch_notes: List[str] = Field(description="Key points for the editorial pitch")
+
+
 class Multimedia(BaseModel):
     visualization_potential: Optional[float] = Field(default=None, ge=0, le=1)
     asset_suggestions: Optional[List[str]] = None
@@ -195,6 +223,8 @@ class Metadata(BaseModel):
     entities: Entities
     editorial: Editorial
     quality: Quality
+    seo_analysis: SEOAnalysis
+    newsroom_pitch_score: NewsroomPitchScore
     provenance: Provenance
     context: Optional[Context] = None
     multimedia: Optional[Multimedia] = None
