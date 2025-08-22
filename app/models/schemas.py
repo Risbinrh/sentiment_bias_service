@@ -196,18 +196,31 @@ class SEOAnalysis(BaseModel):
     overall_seo_score: float = Field(ge=0, le=1, description="Overall SEO potential score")
 
 
+class CompetitorAnalysis(BaseModel):
+    similar_stories_count: int = Field(ge=0, description="Number of similar stories by competitors")
+    unique_angle_score: float = Field(ge=0, le=100, description="How unique our angle is vs competitors")
+    coverage_gaps: List[str] = Field(description="What competitors missed that we can cover")
+    competitive_advantage: List[str] = Field(description="Our advantages over competitor coverage")
+    market_saturation: float = Field(ge=0, le=100, description="How saturated the market is with this story")
+
+
 class NewsroomPitchScore(BaseModel):
-    newsworthiness: float = Field(ge=0, le=1, description="How newsworthy this story is")
-    audience_appeal: float = Field(ge=0, le=1, description="Expected audience engagement")
-    exclusivity_factor: float = Field(ge=0, le=1, description="How unique/exclusive this story is")
-    social_media_potential: float = Field(ge=0, le=1, description="Likelihood to spread on social media")
-    editorial_urgency: float = Field(ge=0, le=1, description="How time-sensitive this story is")
-    resource_requirements: float = Field(ge=0, le=1, description="Editorial resources needed (inverse scale)")
-    brand_alignment: float = Field(ge=0, le=1, description="How well this aligns with publication brand")
-    controversy_risk: float = Field(ge=0, le=1, description="Potential for negative backlash")
-    follow_up_potential: float = Field(ge=0, le=1, description="Likelihood of generating follow-up stories")
-    overall_pitch_score: float = Field(ge=0, le=1, description="Overall newsroom recommendation score")
+    newsworthiness: float = Field(ge=0, le=100, description="How newsworthy this story is")
+    audience_appeal: float = Field(ge=0, le=100, description="Expected audience engagement")
+    exclusivity_factor: float = Field(ge=0, le=100, description="How unique/exclusive this story is")
+    social_media_potential: float = Field(ge=0, le=100, description="Likelihood to spread on social media")
+    editorial_urgency: float = Field(ge=0, le=100, description="How time-sensitive this story is")
+    resource_requirements: float = Field(ge=0, le=100, description="Editorial resources needed (inverse scale)")
+    brand_alignment: float = Field(ge=0, le=100, description="How well this aligns with publication brand")
+    controversy_risk: float = Field(ge=0, le=100, description="Potential for negative backlash")
+    follow_up_potential: float = Field(ge=0, le=100, description="Likelihood of generating follow-up stories")
+    competitor_analysis: CompetitorAnalysis
+    overall_pitch_score: float = Field(ge=0, le=100, description="Overall newsroom recommendation score out of 100")
     recommendation: str = Field(description="Editorial recommendation (Pursue/Consider/Pass)")
+    pitch_summary: str = Field(description="Complete pitch summary for editorial meeting")
+    headline_suggestions: List[str] = Field(description="Suggested headlines for the story")
+    target_audience: List[str] = Field(description="Primary target audience segments")
+    publishing_timeline: str = Field(description="Recommended publishing timeline")
     pitch_notes: List[str] = Field(description="Key points for the editorial pitch")
 
 

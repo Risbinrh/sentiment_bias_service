@@ -171,7 +171,7 @@ Evaluate the content's search engine optimization potential and editorial value 
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, ToneScore,
             Newsworthiness, FactCheck, Impact, Risks, Pitch, Model, Entity, Keyword,
-            Claim, Angle, NextStep, SEOAnalysis, NewsroomPitchScore
+            Claim, Angle, NextStep, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis
         )
         
         analysis_lower = analysis_text.lower()
@@ -485,7 +485,7 @@ Evaluate the content's search engine optimization potential and editorial value 
         from app.models.schemas import (
             ArticleMetadata, Classification, Summary, Entities, Editorial,
             Quality, Provenance, SentimentScore, BiasScore, Newsworthiness,
-            FactCheck, Impact, Risks, Pitch, Model, SEOAnalysis, NewsroomPitchScore
+            FactCheck, Impact, Risks, Pitch, Model, SEOAnalysis, NewsroomPitchScore, CompetitorAnalysis
         )
         
         return Metadata(
@@ -549,18 +549,29 @@ Evaluate the content's search engine optimization potential and editorial value 
                 overall_seo_score=0.5
             ),
             newsroom_pitch_score=NewsroomPitchScore(
-                newsworthiness=0.5,
-                audience_appeal=0.5,
-                exclusivity_factor=0.3,
-                social_media_potential=0.4,
-                editorial_urgency=0.3,
-                resource_requirements=0.7,
-                brand_alignment=0.6,
-                controversy_risk=0.2,
-                follow_up_potential=0.4,
-                overall_pitch_score=0.5,
+                newsworthiness=50,
+                audience_appeal=50,
+                exclusivity_factor=30,
+                social_media_potential=40,
+                editorial_urgency=30,
+                resource_requirements=70,
+                brand_alignment=60,
+                controversy_risk=20,
+                follow_up_potential=40,
+                competitor_analysis=CompetitorAnalysis(
+                    similar_stories_count=2,
+                    unique_angle_score=50,
+                    coverage_gaps=["Need more analysis", "Missing context"],
+                    competitive_advantage=["Basic coverage", "Standard reporting"],
+                    market_saturation=50
+                ),
+                overall_pitch_score=50,
                 recommendation="Consider",
-                pitch_notes=["Standard news content", "Review for editorial value"]
+                pitch_summary="Standard news content with moderate editorial value. Requires further analysis for publication decision.",
+                headline_suggestions=["News Update", "Standard Coverage", "Article Analysis"],
+                target_audience=["General public"],
+                publishing_timeline="Standard (within 24 hours)",
+                pitch_notes=["Standard news content", "Review for editorial value", "Requires additional verification"]
             ),
             provenance=Provenance(
                 models=[Model(
@@ -639,93 +650,160 @@ Evaluate the content's search engine optimization potential and editorial value 
     
     def _generate_newsroom_pitch_score(self, analysis_text: str, article_data: Dict[str, Any], category: str, sentiment: str):
         """Generate newsroom pitch scoring based on editorial value"""
-        from app.models.schemas import NewsroomPitchScore
+        from app.models.schemas import NewsroomPitchScore, CompetitorAnalysis
         
         title = article_data.get('title', '').lower()
         content = article_data.get('text', '').lower()
         word_count = article_data.get('word_count', 0)
         publisher = article_data.get('publisher', '').lower()
         
+        # Convert all scores to 0-100 scale
         # Newsworthiness (based on category, recency, impact)
-        newsworthiness = 0.8 if category in ['Politics', 'Health', 'Crime'] else 0.6
+        newsworthiness = 80 if category in ['Politics', 'Health', 'Crime'] else 60
         if 'breaking' in title or 'exclusive' in title:
-            newsworthiness = 0.9
+            newsworthiness = 90
             
         # Audience appeal (based on human interest, relevance)
-        appeal = 0.7 if category in ['Social', 'Health', 'Sports'] else 0.5
+        appeal = 70 if category in ['Social', 'Health', 'Sports'] else 50
         if sentiment == 'positive':
-            appeal += 0.1
+            appeal += 10
         elif sentiment == 'negative':
-            appeal += 0.2  # Negative news often gets more engagement
+            appeal += 20  # Negative news often gets more engagement
             
         # Exclusivity factor
-        exclusivity = 0.8 if 'exclusive' in title or 'first' in title else 0.4
+        exclusivity = 80 if 'exclusive' in title or 'first' in title else 40
         if publisher in ['reuters', 'bloomberg', 'cnn']:
-            exclusivity += 0.2
+            exclusivity += 20
             
         # Social media potential
-        social_potential = 0.8 if category in ['Social', 'Sports', 'Entertainment'] else 0.5
+        social_potential = 80 if category in ['Social', 'Sports', 'Entertainment'] else 50
         if any(word in content for word in ['viral', 'video', 'photo', 'shocking']):
-            social_potential = 0.9
+            social_potential = 90
             
         # Editorial urgency
-        urgency = 0.9 if 'breaking' in title else 0.6
+        urgency = 90 if 'breaking' in title else 60
         if category in ['Health', 'Crime']:
-            urgency += 0.1
+            urgency += 10
             
-        # Resource requirements (lower is better)
-        resources = 0.8 if word_count > 500 else 0.6  # Longer articles need less additional work
+        # Resource requirements (higher is better - less resources needed)
+        resources = 80 if word_count > 500 else 60
         
-        # Brand alignment (assume general news brand)
-        brand_align = 0.7  # Default good alignment
+        # Brand alignment
+        brand_align = 70  # Default good alignment
         if category in ['Politics', 'Health']:
-            brand_align = 0.8
+            brand_align = 80
             
-        # Controversy risk
-        controversy = 0.3 if category in ['Politics', 'Crime'] else 0.1
+        # Controversy risk (lower is better)
+        controversy = 30 if category in ['Politics', 'Crime'] else 10
         if sentiment == 'negative':
-            controversy += 0.2
+            controversy += 20
             
         # Follow-up potential
-        followup = 0.7 if category in ['Politics', 'Business', 'Health'] else 0.4
+        followup = 70 if category in ['Politics', 'Business', 'Health'] else 40
         
-        # Overall pitch score
+        # Competitor Analysis
+        similar_stories = 3 if category in ['Politics', 'Sports'] else 1
+        unique_angle = 85 if 'exclusive' in title else 65
+        
+        coverage_gaps = []
+        competitive_advantage = []
+        
+        if category == 'Social':
+            coverage_gaps = ["Local perspective missing in competitor coverage", "Community impact analysis"]
+            competitive_advantage = ["On-ground reporting", "Local source access"]
+        elif category == 'Health':
+            coverage_gaps = ["Expert medical opinion", "Patient impact stories"]
+            competitive_advantage = ["Medical expert network", "Patient testimonials"]
+        else:
+            coverage_gaps = ["In-depth analysis", "Local angle"]
+            competitive_advantage = ["Unique sources", "Comprehensive coverage"]
+            
+        market_saturation = 70 if category in ['Politics', 'Sports'] else 30
+        
+        competitor_analysis = CompetitorAnalysis(
+            similar_stories_count=similar_stories,
+            unique_angle_score=min(unique_angle, 100),
+            coverage_gaps=coverage_gaps,
+            competitive_advantage=competitive_advantage,
+            market_saturation=min(market_saturation, 100)
+        )
+        
+        # Overall pitch score (0-100)
         overall = (newsworthiness + appeal + exclusivity + social_potential + urgency + 
-                  (1-controversy) + followup + brand_align) / 8
+                  (100-controversy) + followup + brand_align) / 8
         
-        # Recommendation
-        if overall > 0.75:
+        # Recommendation based on 0-100 scale
+        if overall > 75:
             recommendation = "Pursue"
-        elif overall > 0.5:
+        elif overall > 50:
             recommendation = "Consider"
         else:
             recommendation = "Pass"
             
+        # Complete pitch summary
+        pitch_summary = f"This {category.lower()} story scores {overall:.0f}/100 for editorial value. " + \
+                       f"Strong points: {newsworthiness:.0f}/100 newsworthiness, {appeal:.0f}/100 audience appeal. " + \
+                       f"Recommendation: {recommendation} for publication."
+        
+        # Headline suggestions
+        original_title = article_data.get('title', '')
+        headline_suggestions = [
+            f"BREAKING: {original_title}" if urgency > 80 else original_title,
+            f"EXCLUSIVE: {original_title}" if exclusivity > 70 else f"Analysis: {original_title}",
+            f"{category} Update: {original_title}"
+        ]
+        
+        # Target audience
+        target_audience = []
+        if category == 'Social':
+            target_audience = ["General public", "Community leaders", "Social media users"]
+        elif category == 'Health':
+            target_audience = ["Healthcare professionals", "Patients", "General public"]
+        elif category == 'Politics':
+            target_audience = ["Policy makers", "Political analysts", "Informed citizens"]
+        else:
+            target_audience = ["General public", "Industry professionals"]
+            
+        # Publishing timeline
+        if urgency > 80:
+            timeline = "Immediate (within 2 hours)"
+        elif urgency > 60:
+            timeline = "Today (within 6 hours)"
+        else:
+            timeline = "Standard (within 24 hours)"
+            
         # Pitch notes
         notes = []
-        if newsworthiness > 0.7:
-            notes.append("High news value")
-        if social_potential > 0.7:
-            notes.append("Strong social media potential")
-        if urgency > 0.8:
-            notes.append("Time-sensitive story")
-        if controversy > 0.5:
-            notes.append("Handle with editorial caution")
+        if newsworthiness > 70:
+            notes.append("High news value - significant public interest")
+        if social_potential > 70:
+            notes.append("Strong social media potential - likely to be shared")
+        if urgency > 80:
+            notes.append("Time-sensitive story - publish immediately")
+        if controversy > 50:
+            notes.append("Handle with editorial caution - potential backlash risk")
+        if exclusivity > 70:
+            notes.append("Exclusive angle - competitive advantage")
         if not notes:
             notes.append("Standard editorial review recommended")
             
         return NewsroomPitchScore(
-            newsworthiness=min(newsworthiness, 1.0),
-            audience_appeal=min(appeal, 1.0),
-            exclusivity_factor=min(exclusivity, 1.0),
-            social_media_potential=min(social_potential, 1.0),
-            editorial_urgency=min(urgency, 1.0),
-            resource_requirements=min(resources, 1.0),
-            brand_alignment=min(brand_align, 1.0),
-            controversy_risk=min(controversy, 1.0),
-            follow_up_potential=min(followup, 1.0),
-            overall_pitch_score=min(overall, 1.0),
+            newsworthiness=min(newsworthiness, 100),
+            audience_appeal=min(appeal, 100),
+            exclusivity_factor=min(exclusivity, 100),
+            social_media_potential=min(social_potential, 100),
+            editorial_urgency=min(urgency, 100),
+            resource_requirements=min(resources, 100),
+            brand_alignment=min(brand_align, 100),
+            controversy_risk=min(controversy, 100),
+            follow_up_potential=min(followup, 100),
+            competitor_analysis=competitor_analysis,
+            overall_pitch_score=min(overall, 100),
             recommendation=recommendation,
+            pitch_summary=pitch_summary,
+            headline_suggestions=headline_suggestions[:3],
+            target_audience=target_audience,
+            publishing_timeline=timeline,
             pitch_notes=notes
         )
 
