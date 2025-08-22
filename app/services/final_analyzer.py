@@ -49,11 +49,15 @@ class FinalNewsAnalyzer:
                 
                 # Map spaCy labels to our categories
                 if ent.label_ == "PERSON":
-                    if len(entity_text) > 3 and entity_text not in people:
+                    # Filter out known organizations misclassified as people
+                    known_orgs = ["Universal Studio", "Universal Studios", "Universal", "Studio"]
+                    if len(entity_text) > 3 and entity_text not in people and entity_text not in known_orgs:
                         people.append(entity_text)
                         
                 elif ent.label_ in ["ORG", "NORP"]:  # Organizations and nationalities
-                    if len(entity_text) > 2 and entity_text not in organizations:
+                    # Filter out common words misclassified as organizations
+                    excluded_orgs = ["Famine", "Crisis", "Disaster", "Emergency", "Conflict"]
+                    if len(entity_text) > 2 and entity_text not in organizations and entity_text not in excluded_orgs:
                         organizations.append(entity_text)
                         
                 elif ent.label_ in ["GPE", "LOC"]:  # Geopolitical entities and locations
@@ -175,14 +179,14 @@ Keep your response clear and concise."""
         category = "News"  # Default
         
         # Priority order: specific incidents first, then general topics
-        if any(word in content_combined for word in ["social", "society", "community", "cultural", "behavior", "incident", "queue", "public", "controversy"]):
+        if any(word in content_combined for word in ["social", "society", "community", "cultural", "behavior", "incident", "queue", "cut queue", "cutting", "public", "controversy", "woman", "said"]):
             category = "Social"
         elif any(word in content_combined for word in ["crime", "police", "court", "arrest", "investigation", "legal"]):
             category = "Crime"
+        elif any(word in content_combined for word in ["health", "medical", "hospital", "disease", "medicine", "covid", "virus", "famine", "malnutrition", "humanitarian"]):
+            category = "Health"
         elif any(word in content_combined for word in ["politic", "government", "election", "policy", "minister", "parliament", "vote"]):
             category = "Politics"
-        elif any(word in content_combined for word in ["health", "medical", "hospital", "disease", "medicine", "covid", "virus"]):
-            category = "Health"
         elif any(word in content_combined for word in ["sport", "game", "match", "team", "player", "football", "soccer"]):
             category = "Sports"
         elif any(word in content_combined for word in ["business", "company", "market", "economy", "financial", "stock", "profit"]):
@@ -276,7 +280,8 @@ Keep your response clear and concise."""
             common_orgs = ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon', 'Meta', 'Netflix', 'Uber', 'SpaceX', 
                           'OpenAI', 'ChatGPT', 'TikTok', 'Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'YouTube',
                           'NASA', 'WHO', 'UN', 'EU', 'World Bank', 'IMF', 'Reuters', 'BBC', 'CNN', 'Bloomberg',
-                          'McDonald\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
+                          'McDonald\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola',
+                          'Universal Studios', 'Universal Studio', 'Disney', 'Disneyland']
             
             for org in common_orgs:
                 if org.lower() in full_text.lower() and org not in org_entities:
@@ -291,11 +296,16 @@ Keep your response clear and concise."""
         
         # Add author as a person if available and not already detected
         author = article_data.get('author', '')
-        if author and author not in people_entities:
-            # Check if author looks like a person name (has at least 2 words)
-            author_parts = author.split()
-            if len(author_parts) >= 2 and len(author) > 5:
-                people_entities.append(author)
+        if author:
+            # Split multiple authors by comma
+            authors = [a.strip() for a in author.split(',')]
+            for auth in authors:
+                if auth and auth not in people_entities:
+                    # Check if author looks like a person name
+                    author_parts = auth.split()
+                    # Accept names with 1+ words that are long enough and not just initials
+                    if (len(author_parts) >= 2 or len(auth) > 5) and not auth.lower().startswith('by '):
+                        people_entities.insert(0, auth)  # Insert at beginning as most relevant
         
         # Add URL-based organization if still empty
         if not org_entities:
@@ -321,7 +331,7 @@ Keep your response clear and concise."""
             abstract = f"Analysis of {article_data.get('title', 'news article')} showing {sentiment_label} sentiment in the {category.lower()} sector."
         
         # Create TLDR
-        tldr = f"{category} news with {sentiment_label} sentiment - {article_data.get('title', 'Article')[:50]}"
+        tldr = f"{category} news with {sentiment_label} sentiment - {article_data.get('title', 'Article')[:100]}"
         
         # Ensure we have key points
         if not key_points:
@@ -413,7 +423,10 @@ Keep your response clear and concise."""
                 ),
                 pitch=Pitch(
                     headline=f"Analysis: {article_data.get('title', 'News Story')[:60]}",
+                    subheading=f"{category} story with {sentiment_label} implications for {location_entities[0] if location_entities else 'the region'}",
+                    hook=key_points[0][:200] if key_points else f"Breaking {category.lower()} news with significant public interest",
                     nut_graph=f"This {category.lower()} story shows {sentiment_label} developments that may impact industry trends and public perception.",
+                    call_to_action=f"Follow this developing {category.lower()} story for updates and analysis",
                     next_steps=[
                         NextStep(
                             action="Verify key claims with additional sources",
@@ -489,7 +502,10 @@ Keep your response clear and concise."""
                 risks=Risks(),
                 pitch=Pitch(
                     headline=f"News Update: {article_data.get('title', 'Article')[:50]}",
-                    nut_graph="Article processed and ready for editorial review"
+                    subheading="Article analysis complete",
+                    hook="News content extracted and processed",
+                    nut_graph="Article processed and ready for editorial review",
+                    call_to_action="Review analysis results and provide feedback"
                 )
             ),
             quality=Quality(
