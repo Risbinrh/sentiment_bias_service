@@ -334,10 +334,10 @@ Evaluate the content's search engine optimization potential and editorial value 
             elif 'cnn' in url:
                 org_entities.append('CNN')
         
-        # Remove duplicates and limit results
-        people_entities = list(dict.fromkeys(people_entities))[:8]
-        org_entities = list(dict.fromkeys(org_entities))[:8] 
-        location_entities = list(dict.fromkeys(location_entities))[:8]
+        # Clean and deduplicate entities
+        people_entities = self._clean_entity_list(people_entities)[:8]
+        org_entities = self._clean_entity_list(org_entities)[:8] 
+        location_entities = self._clean_entity_list(location_entities)[:8]
         
         # Create abstract from first good summary sentence or fallback
         if summary_sentences:
@@ -443,14 +443,14 @@ Evaluate the content's search engine optimization potential and editorial value 
                     safety=["Public information safety"] if any(word in content_combined for word in ["safety", "health", "security", "risk"]) else []
                 ),
                 pitch=Pitch(
-                    headline=f"Analysis: {article_data.get('title', 'News Story')[:60]}",
-                    subheading=f"{category} story with {sentiment_label} implications for {location_entities[0] if location_entities else 'the region'}",
-                    hook=key_points[0][:200] if key_points else f"Breaking {category.lower()} news with significant public interest",
-                    nut_graph=f"This {category.lower()} story shows {sentiment_label} developments that may impact industry trends and public perception.",
-                    call_to_action=f"Follow this developing {category.lower()} story for updates and analysis",
+                    headline=f"Analysis: {article_data.get('title', 'News Story')[:80]}",
+                    subheading=f"{category} story with {sentiment_label} implications for {location_entities[0] if location_entities and len(location_entities) > 0 else 'global audience'}",
+                    hook=self._generate_compelling_hook(key_points, category, sentiment_label, article_data),
+                    nut_graph=self._generate_nut_graph(category, sentiment_label, article_data, key_points),
+                    call_to_action=self._generate_call_to_action(category, sentiment_label, article_data),
                     next_steps=[
                         NextStep(
-                            action="Verify key claims with additional sources",
+                            action=f"Verify {category.lower()} claims with subject matter experts",
                             owner="Editorial Team"
                         ),
                         NextStep(
@@ -806,6 +806,89 @@ Evaluate the content's search engine optimization potential and editorial value 
             publishing_timeline=timeline,
             pitch_notes=notes
         )
+
+    def _generate_compelling_hook(self, key_points: List[str], category: str, sentiment: str, article_data: Dict[str, Any]) -> str:
+        """Generate a compelling hook for the pitch"""
+        title = article_data.get('title', '')
+        
+        if key_points and len(key_points[0]) > 20:
+            hook = key_points[0][:180]
+            # Remove formatting markers if present
+            hook = hook.replace('**', '').replace('*', '').strip()
+        else:
+            # Generate based on category and sentiment
+            if category == "Politics":
+                hook = f"Political developments unfold as {title[:100]}..."
+            elif category == "Health":
+                hook = f"Health concerns emerge as {title[:100]}..."
+            elif category == "Social":
+                hook = f"Social incident captures attention as {title[:100]}..."
+            elif category == "Crime":
+                hook = f"Criminal activity reported as {title[:100]}..."
+            else:
+                hook = f"{category} story develops: {title[:100]}..."
+        
+        return hook
+
+    def _generate_nut_graph(self, category: str, sentiment: str, article_data: Dict[str, Any], key_points: List[str]) -> str:
+        """Generate a compelling nut graph that explains the story's significance"""
+        title = article_data.get('title', '')
+        
+        if category == "Politics":
+            return f"This political development regarding {title[:50]}... could impact policy decisions and public opinion, requiring careful editorial consideration."
+        elif category == "Health":
+            return f"This health-related story about {title[:50]}... has implications for public health awareness and medical community response."
+        elif category == "Social":
+            return f"This social incident involving {title[:50]}... reflects broader societal issues and cultural dynamics worth examining."
+        elif category == "Crime":
+            return f"This criminal case involving {title[:50]}... raises questions about public safety and law enforcement response."
+        elif category == "Business":
+            return f"This business development regarding {title[:50]}... could affect market conditions and economic trends."
+        else:
+            return f"This {category.lower()} story about {title[:50]}... provides insights into current trends and developments affecting our readership."
+
+    def _generate_call_to_action(self, category: str, sentiment: str, article_data: Dict[str, Any]) -> str:
+        """Generate a specific call to action based on story type"""
+        if sentiment == "negative" and category in ["Health", "Crime", "Politics"]:
+            return f"Monitor this developing {category.lower()} situation for community impact and follow-up coverage"
+        elif category == "Social":
+            return "Track community response and potential viral spread on social platforms"
+        elif category == "Politics":
+            return "Follow political reactions and policy implications for comprehensive coverage"
+        elif category == "Health":
+            return "Consult medical experts for analysis and public health guidance"
+        else:
+            return f"Continue monitoring this {category.lower()} story for updates and broader implications"
+
+    def _clean_entity_list(self, entities: List[str]) -> List[str]:
+        """Clean entity list by removing formatting and invalid entries"""
+        cleaned = []
+        for entity in entities:
+            if not entity:
+                continue
+                
+            # Remove markdown formatting
+            clean_entity = entity.replace('**', '').replace('*', '').replace('+', '').strip()
+            
+            # Remove common analysis markers
+            if any(marker in clean_entity.lower() for marker in ['analysis:', 'seo analysis', '###', '##', '#']):
+                continue
+                
+            # Skip if too short or contains only special characters
+            if len(clean_entity) < 2 or clean_entity.isdigit():
+                continue
+                
+            # Skip common words and non-location terms that shouldn't be entities
+            invalid_terms = ['the', 'a', 'an', 'and', 'or', 'but', 'with', 'for', 'in', 'on', 'at', 
+                           'famine', 'crisis', 'disaster', 'emergency', 'conflict', 'war', 'peace',
+                           'analysis', 'story', 'news', 'article', 'report', 'update']
+            if clean_entity.lower() in invalid_terms:
+                continue
+                
+            if clean_entity not in cleaned:
+                cleaned.append(clean_entity)
+                
+        return cleaned
 
 
 # Singleton instance
