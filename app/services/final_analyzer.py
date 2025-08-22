@@ -168,16 +168,29 @@ Keep your response clear and concise."""
             sentiment_label = "negative"
             sentiment_score = -0.75
         
-        # Extract category
-        category = "Business"  # Default
-        if any(word in analysis_lower for word in ["technolog", "tech", "ai", "software", "digital", "computer"]):
-            category = "Technology"
-        elif any(word in analysis_lower for word in ["politic", "government", "election", "policy", "minister"]):
+        # Extract category based on content
+        title_lower = article_data.get('title', '').lower()
+        content_combined = f"{title_lower} {analysis_lower}".lower()
+        
+        category = "News"  # Default
+        
+        # Priority order: specific incidents first, then general topics
+        if any(word in content_combined for word in ["social", "society", "community", "cultural", "behavior", "incident", "queue", "public", "controversy"]):
+            category = "Social"
+        elif any(word in content_combined for word in ["crime", "police", "court", "arrest", "investigation", "legal"]):
+            category = "Crime"
+        elif any(word in content_combined for word in ["politic", "government", "election", "policy", "minister", "parliament", "vote"]):
             category = "Politics"
-        elif any(word in analysis_lower for word in ["health", "medical", "hospital", "disease", "medicine"]):
+        elif any(word in content_combined for word in ["health", "medical", "hospital", "disease", "medicine", "covid", "virus"]):
             category = "Health"
-        elif any(word in analysis_lower for word in ["sport", "game", "match", "team", "player"]):
+        elif any(word in content_combined for word in ["sport", "game", "match", "team", "player", "football", "soccer"]):
             category = "Sports"
+        elif any(word in content_combined for word in ["business", "company", "market", "economy", "financial", "stock", "profit"]):
+            category = "Business"
+        elif any(word in content_combined for word in ["travel", "tourism", "hotel", "vacation", "destination"]):
+            category = "Travel"
+        elif any(word in content_combined for word in ["technolog", "tech", "ai", "software", "digital", "computer", "app", "internet"]):
+            category = "Technology"
         
         # Extract summary and entities from response
         lines = analysis_text.split('\n')
@@ -276,6 +289,14 @@ Keep your response clear and concise."""
         if publisher and publisher not in org_entities:
             org_entities.append(publisher)
         
+        # Add author as a person if available and not already detected
+        author = article_data.get('author', '')
+        if author and author not in people_entities:
+            # Check if author looks like a person name (has at least 2 words)
+            author_parts = author.split()
+            if len(author_parts) >= 2 and len(author) > 5:
+                people_entities.append(author)
+        
         # Add URL-based organization if still empty
         if not org_entities:
             url = article_data.get('url', '')
@@ -371,12 +392,12 @@ Keep your response clear and concise."""
                 ),
                 angles=[
                     Angle(
-                        label=f"{category} Industry Impact",
-                        rationale=f"This story affects {category.lower()} sector stakeholders and market dynamics"
+                        label=f"{category} Impact" if category != "News" else "News Analysis",
+                        rationale=f"This {category.lower()} story affects relevant stakeholders and public discourse"
                     ),
                     Angle(
-                        label="Public Interest",
-                        rationale="Story has implications for general public awareness and decision-making"
+                        label="Cultural Context" if category in ["Social", "Travel"] else "Public Interest",
+                        rationale="Story has implications for social understanding and community relations" if category in ["Social", "Travel"] else "Story has implications for general public awareness and decision-making"
                     )
                 ],
                 impact=Impact(
@@ -387,8 +408,8 @@ Keep your response clear and concise."""
                 ),
                 risks=Risks(
                     legal=["Information accuracy verification needed"] if sentiment_label == "negative" else [],
-                    ethical=["Balanced reporting considerations", "Source attribution requirements"],
-                    safety=["Public information safety"] if any(word in analysis_lower for word in ["safety", "health", "security", "risk"]) else []
+                    ethical=["Balanced reporting considerations", "Source attribution requirements"] + (["Cultural sensitivity considerations"] if category in ["Social", "Travel"] else []),
+                    safety=["Public information safety"] if any(word in content_combined for word in ["safety", "health", "security", "risk"]) else []
                 ),
                 pitch=Pitch(
                     headline=f"Analysis: {article_data.get('title', 'News Story')[:60]}",
