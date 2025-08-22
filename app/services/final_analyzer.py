@@ -1,8 +1,10 @@
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
+import spacy
+from spacy import displacy
 from app.core.ollama_client import get_ollama_client
 from app.models.schemas import Metadata, AnalysisRequest
 from app.services.scraper import get_scraper
@@ -13,7 +15,61 @@ logger = logging.getLogger(__name__)
 
 class FinalNewsAnalyzer:
     def __init__(self):
-        pass
+        self.nlp = None
+        self._load_spacy_model()
+    
+    def _load_spacy_model(self):
+        """Load spaCy English model for NER"""
+        try:
+            self.nlp = spacy.load("en_core_web_sm")
+            logger.info("SpaCy English model loaded successfully")
+        except Exception as e:
+            logger.warning(f"Failed to load spaCy model: {e}. Falling back to regex extraction")
+            self.nlp = None
+    
+    def _extract_entities_with_spacy(self, text: str) -> Dict[str, List[str]]:
+        """Extract entities using spaCy NER"""
+        if not self.nlp or not text:
+            return {"people": [], "organizations": [], "locations": []}
+        
+        try:
+            # Process text with spaCy
+            doc = self.nlp(text[:2000])  # Limit text for performance
+            
+            people = []
+            organizations = []
+            locations = []
+            
+            for ent in doc.ents:
+                entity_text = ent.text.strip()
+                
+                # Filter out single characters and very short entities
+                if len(entity_text) < 2 or entity_text.lower() in ['the', 'a', 'an', 'and', 'or', 'but']:
+                    continue
+                
+                # Map spaCy labels to our categories
+                if ent.label_ == "PERSON":
+                    if len(entity_text) > 3 and entity_text not in people:
+                        people.append(entity_text)
+                        
+                elif ent.label_ in ["ORG", "NORP"]:  # Organizations and nationalities
+                    if len(entity_text) > 2 and entity_text not in organizations:
+                        organizations.append(entity_text)
+                        
+                elif ent.label_ in ["GPE", "LOC"]:  # Geopolitical entities and locations
+                    if len(entity_text) > 2 and entity_text not in locations:
+                        locations.append(entity_text)
+            
+            # Limit results to avoid overwhelming response
+            return {
+                "people": people[:8],
+                "organizations": organizations[:8], 
+                "locations": locations[:8]
+            }
+            
+        except Exception as e:
+            logger.error(f"SpaCy entity extraction failed: {e}")
+            return {"people": [], "organizations": [], "locations": []}
 
     async def analyze_comprehensive(self, request: AnalysisRequest) -> Metadata:
         """
@@ -193,42 +249,35 @@ Keep your response clear and concise."""
                 if clean_point:
                     key_points.append(clean_point[:150])
         
-        # Enhanced entity extraction from title and content
-        full_text = f"{article_data.get('title', '')} {article_data.get('text', '')[:1000]}"
+        # Extract entities using spaCy NER (preferred) with fallback to regex
+        full_text = f"{article_data.get('title', '')} {article_data.get('text', '')[:1500]}"
         
-        # Always try to extract entities from content regardless of Ollama parsing
-        # Common organizations (companies, institutions)
-        common_orgs = ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon', 'Meta', 'Netflix', 'Uber', 'SpaceX', 
-                      'OpenAI', 'ChatGPT', 'TikTok', 'Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'YouTube',
-                      'NASA', 'WHO', 'UN', 'EU', 'World Bank', 'IMF', 'Reuters', 'BBC', 'CNN', 'Bloomberg',
-                      'McDonald\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
+        # Primary entity extraction with spaCy
+        spacy_entities = self._extract_entities_with_spacy(full_text)
+        people_entities.extend(spacy_entities["people"])
+        org_entities.extend(spacy_entities["organizations"])
+        location_entities.extend(spacy_entities["locations"])
         
-        for org in common_orgs:
-            if org.lower() in full_text.lower() and org not in org_entities:
-                org_entities.append(org)
+        # Fallback: Add common organizations if spaCy missed them
+        if len(org_entities) < 3:
+            common_orgs = ['Tesla', 'Apple', 'Microsoft', 'Google', 'Amazon', 'Meta', 'Netflix', 'Uber', 'SpaceX', 
+                          'OpenAI', 'ChatGPT', 'TikTok', 'Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'YouTube',
+                          'NASA', 'WHO', 'UN', 'EU', 'World Bank', 'IMF', 'Reuters', 'BBC', 'CNN', 'Bloomberg',
+                          'McDonald\'s', 'Starbucks', 'Walmart', 'Samsung', 'Sony', 'Nike', 'Adidas', 'Coca-Cola']
+            
+            for org in common_orgs:
+                if org.lower() in full_text.lower() and org not in org_entities:
+                    org_entities.append(org)
+                    if len(org_entities) >= 5:  # Limit fallback additions
+                        break
         
-        # Extract proper names (people) using regex patterns
-        name_patterns = re.findall(r'\b([A-Z][a-z]{2,} [A-Z][a-z]{2,}(?: [A-Z][a-z]{2,})?)\b', full_text)
-        for match in name_patterns[:5]:  # Limit to 5 names
-            name = match[0] if isinstance(match, tuple) else match
-            if len(name) > 5 and name not in people_entities:
-                # Exclude common non-person patterns
-                if not any(word in name.lower() for word in ['news', 'report', 'article', 'company', 'inc', 'ltd']):
-                    people_entities.append(name)
+        # Add publisher as organization if not already detected
+        publisher = article_data.get('publisher', '')
+        if publisher and publisher not in org_entities:
+            org_entities.append(publisher)
         
-        # Enhanced location detection
-        locations = ['Singapore', 'Malaysia', 'China', 'USA', 'United States', 'India', 'Japan', 'Korea', 
-                    'Europe', 'Asia', 'Africa', 'Australia', 'Canada', 'Mexico', 'Brazil', 'Germany', 
-                    'France', 'Italy', 'Spain', 'UK', 'Britain', 'Russia', 'Thailand', 'Vietnam',
-                    'New York', 'London', 'Tokyo', 'Seoul', 'Beijing', 'Mumbai', 'Dubai', 'Hong Kong']
-        
-        for location in locations:
-            if location.lower() in full_text.lower() and location not in location_entities:
-                location_entities.append(location)
-        
-        # Add some default entities if still empty
-        if not people_entities and not org_entities and not location_entities:
-            # Extract from URL domain as organization
+        # Add URL-based organization if still empty
+        if not org_entities:
             url = article_data.get('url', '')
             if 'thehindu' in url:
                 org_entities.append('The Hindu')
@@ -238,11 +287,11 @@ Keep your response clear and concise."""
                 org_entities.append('Bloomberg')
             elif 'cnn' in url:
                 org_entities.append('CNN')
-            
-            # Add publisher as organization
-            publisher = article_data.get('publisher', '')
-            if publisher and publisher not in org_entities:
-                org_entities.append(publisher)
+        
+        # Remove duplicates and limit results
+        people_entities = list(dict.fromkeys(people_entities))[:8]
+        org_entities = list(dict.fromkeys(org_entities))[:8] 
+        location_entities = list(dict.fromkeys(location_entities))[:8]
         
         # Create abstract from first good summary sentence or fallback
         if summary_sentences:
