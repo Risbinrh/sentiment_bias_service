@@ -79,6 +79,9 @@ class OllamaClient:
         
         try:
             response = await client.post(endpoint, json=payload)
+            if response.status_code == 400:
+                error_detail = response.text
+                logger.error(f"Ollama 400 error detail: {error_detail[:500]}")
             response.raise_for_status()
             
             result = response.json()
@@ -86,13 +89,8 @@ class OllamaClient:
             # Extract the generated response
             if "response" in result:
                 response_text = result["response"]
-                # Try to parse as JSON first (for backward compatibility)
-                try:
-                    generated_json = json.loads(response_text)
-                    return generated_json
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, return the text response directly
-                    return {"response": response_text}
+                # Always return text response in consistent format
+                return {"response": response_text}
             
             return result
             

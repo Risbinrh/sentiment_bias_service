@@ -17,6 +17,7 @@ class WebScraper:
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0),
             follow_redirects=True,
+            verify=False,  # Disable SSL verification for problematic certificates
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }

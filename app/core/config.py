@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Ollama Configuration
     ollama_primary_url: str = os.getenv("OLLAMA_PRIMARY_URL", "http://20.64.243.4:11434")
     ollama_fallback_url: str = os.getenv("OLLAMA_FALLBACK_URL", "http://172.17.0.1:11434")
-    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "mistral:7b")
     ollama_timeout: int = int(os.getenv("OLLAMA_TIMEOUT", "60"))
     
     # API Configuration

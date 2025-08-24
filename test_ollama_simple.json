@@ -1,6 +1,0 @@
-{
-  "model": "llama3.2:1b",
-  "prompt": "Analyze: 'Tesla Reports Strong Q3 Earnings' by Tech News Daily\n\nText: Tesla announced record quarterly earnings today, with revenue exceeding expectations. The electric vehicle manufacturer beat analyst estimates and stock prices surged 10% in after-hours trading.\n\nAnalyze sentiment and return JSON: {\"sentiment\": \"positive\", \"summary\": \"Tesla beats earnings\"}",
-  "stream": false,
-  "format": "json"
-}
